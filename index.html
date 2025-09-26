@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CRUD produtos</title>
+<style>
+    body{
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f4f4f4;
+    }
+    input, button, select{
+        margin:5px;
+        padding: 6px;
+    }
+    table{
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    th, td{
+        padding: 8px;
+        border: 1px solid #ddd;
+        text-align: left;
+    }
+    th{
+        background-color: #f2f2f2;
+    }
+    .btn{
+        padding: 8px 12px;
+        color: #fff;
+        background-color: #007BFF;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    .btn:hover{
+        background-color: #0056b3;
+    }
+    .btn-danger{
+        background-color: #dc3545;
+    }
+    .btn-danger:hover{
+        background-color: #c82333;
+    }
+</style>
+
+</head>
+<body>
+
+    // SITUAÇÃO ATUAL (comentário para retomada):
+// O projeto é um CRUD de produtos com frontend em HTML/JS e backend em PHP (produtos.php).
+// O usuário estava rodando os arquivos fora da pasta 'htdocs' do XAMPP, por isso a API não funcionava.
+// Orientação: mover toda a pasta do projeto (ou pelo menos index.html e produtos.php) para dentro de C:\xampp\htdocs\.
+// O caminho da API no JS deve bater com o local real do produtos.php.
+// Após mover, acessar pelo navegador via http://localhost/nomedapasta/index.html.
+// Se não funcionar, revisar permissões, caminhos e possíveis erros no console do navegador ou no PHP.
+// Retomar daqui após reabrir o VS Code.
+
+    <h1>Gerenciar Produtos</h1>
+       
+    <!-- Formulário para cadastrar produtos -->
+    <div>
+        <input type="hidden" id="IDproduto">
+        <input type="text" id="NomeProduto" placeholder="Nome do Produto" required>
+        <input type="number" id="PrecoProduto" placeholder="Preço do Produto" required>
+        <select id="Disponibilidade">
+            <option value="1">Disponível</option>
+            <option value="0">Esgotado</option>
+        </select>
+        <button type="button" class="btn" onclick="salvar()">Salvar</button>
+        <button type="button" class="btn btn-danger" onclick="limpar()">Limpar</button>
+    </div>
+
+    <!-- Campo de Pesquisa -->
+    <div>
+        <input type="text" id="pesquisa" placeholder="Pesquisar por nome">
+        <button onclick="carregarPesquisa()">Pesquisar</button>
+        <button onclick="carregar()">Listar todos</button>
+    </div> 
+    
+    <!-- Tabela para exibir produtos -->
+
+    <table id="tabela"> 
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Preço</th>
+                <th>Disponibilidade</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        const API_URL = 'http://localhost/crud-produtos-api/produtos.php';
+
+        function carregar(pesquisa = "") {
+            let url = API_URL;
+            if (pesquisa) {
+                url += "?pesquisa=" + encodeURIComponent(pesquisa);
+            }
+            fetch(url)
+                .then(resposta => resposta.json())
+                .then(dados => {
+                    const tbody = document.querySelector('#tabela tbody');
+                    tbody.innerHTML = ''; // Limpa antes de adicionar
+                    dados.forEach(produto => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${produto.IDproduto}</td>
+                            <td>${produto.NomeProduto}</td>
+                            <td>${produto.PrecoProduto}</td>
+                            <td>${produto.Disponibilidade == 1 ? 'Disponível' : 'Esgotado'}</td>
+                            <td>
+                                <button class="btn" onclick='editar(${JSON.stringify(produto)})'>Editar</button>
+                                <button class="btn btn-danger" onclick="excluir(${produto.IDproduto})">Deletar</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                });
+        }
+
+        function carregarPesquisa() {
+            const valor = document.getElementById('pesquisa').value;
+            carregar(valor);
+        }
+
+        async function salvar() {
+            const IDproduto = document.getElementById('IDproduto').value;
+            const NomeProduto = document.getElementById('NomeProduto').value;
+            const PrecoProduto = parseFloat(document.getElementById('PrecoProduto').value); // <-- aqui
+            const Disponibilidade = parseInt(document.getElementById('Disponibilidade').value);
+
+            const payload = {
+                NomeProduto,
+                PrecoProduto,
+                Disponibilidade
+            };
+
+            let resposta;
+            if (IDproduto) {
+                payload.IDproduto = IDproduto;
+                resposta = await fetch(API_URL, { method: 'PUT', body: JSON.stringify(payload) });
+            } else {
+                resposta = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+            }
+
+            const texto = await resposta.text();
+            console.log('Resposta da API:', texto);
+
+            limpar();
+            carregar();
+        }
+
+        function editar(produto) {
+            document.getElementById('IDproduto').value = produto.IDproduto;
+            document.getElementById('NomeProduto').value = produto.NomeProduto;
+            document.getElementById('PrecoProduto').value = produto.PrecoProduto;
+            document.getElementById('Disponibilidade').value = produto.Disponibilidade;
+        }
+
+        async function excluir(IDproduto) {
+            if (confirm('Deseja excluir esse produto?')) {
+                await fetch(API_URL + '?IDproduto=' + IDproduto, { method: 'DELETE' });
+                carregar();
+            }
+        }
+
+        function limpar() {
+            document.getElementById('IDproduto').value = '';
+            document.getElementById('NomeProduto').value = '';
+            document.getElementById('PrecoProduto').value = '';
+            document.getElementById('Disponibilidade').value = '1';
+        }
+
+        carregar();
+    </script>
+
+</body>
+</html>
+
